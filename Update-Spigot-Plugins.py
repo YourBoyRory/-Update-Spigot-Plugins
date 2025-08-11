@@ -5,7 +5,7 @@ import os
 import sys
 import json
 
-class UpdateCompadiblityLayers:
+class UpdatePlugins:
 
     def __init__(self):
         template = {
@@ -74,4 +74,4 @@ class UpdateCompadiblityLayers:
 
 
 if __name__ == "__main__":
-    UpdateCompadiblityLayers()
+    UpdatePlugins()
