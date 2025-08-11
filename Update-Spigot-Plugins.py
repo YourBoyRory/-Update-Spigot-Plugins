@@ -1,4 +1,4 @@
-from urllib.request import urlretrieve
+import urllib.request
 import requests
 import traceback
 import os
@@ -59,8 +59,13 @@ class UpdateCompadiblityLayers:
 
     def downloadFile(self, url, file_path):
         filename = os.path.basename(file_path)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        }
         try:
-            urlretrieve(url, file_path)
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req) as response, open(file_path, 'wb') as out_file:
+                out_file.write(response.read())
             print(f"[INFO] Updated Package {filename}.")
             return True
         except Exception as e:
