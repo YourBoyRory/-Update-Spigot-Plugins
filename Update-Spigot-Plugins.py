@@ -1,6 +1,6 @@
 import urllib.request
-import requests
 import traceback
+import re
 import os
 import sys
 import json
@@ -11,7 +11,14 @@ class UpdatePlugins:
         template = {
             "(PLUGIN PATH)": {
                 "URL": "(URL TO ROLLING PLUGIN DOWNLOAD OR GITHUB API)",
-                "github": "(Use the github api. Optional - assumes false)"
+                "github": "(Parses the github api instead of expecting a direct download. Optional - assumes false)"
+                "file_index": "( GITHUB ONLY: The index of which file to download. Optional - assumes 0 (The first package))"
+                "file_regex": "( GITHUB ONLY: Regex to match which file to download. Optional - Overrides file_index))"
+            },
+            "./plugins/EssentialsX.jar": {
+                "URL": "https://api.github.com/repos/EssentialsX/Essentials/releases/latest",
+                "github": True,
+                "file_regex": "EssentialsX-.*.jar"
             },
             "./plugins/Geyser-Spigot.jar": {
                 "URL": "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot"
@@ -39,7 +46,7 @@ class UpdatePlugins:
         for plugin, metaData in data.items():
             if "github" in metaData and metaData['github'] == True:
                 self.downloadFile(
-                    self.getGithubURL(metaData['URL']),
+                    self.getGithubURL(metaData['URL'], metaData.get('file_regex', None), metaData.get('file_index', 0)),
                     plugin
                 )
             else:
@@ -48,13 +55,23 @@ class UpdatePlugins:
                     plugin
                 )
 
-    def getGithubURL(self, url):
+    def getGithubURL(self, url, file_regex=None, file_index=0):
         try:
-            response = requests.get(url).json()
-            print("[INFO] Connected to Github API.")
-            return response["assets"][0]["browser_download_url"]
+            with urllib.request.urlopen(url) as resp:
+                data = json.load(resp)
+            print("[PLUGIN UPDATE INFO] Connected to Github API.")
+
+            if file_regex:
+                pattern = re.compile(file_regex)
+                for file in data["assets"]:
+                    if pattern.match(file['name']):
+                        url = file["browser_download_url"]
+                        break
+            else:
+                url = data["assets"][file_index]["browser_download_url"]
+            return url
         except Exception as e:
-            print("[ERROR] Github API Call Failed, Update Aborted. {e}")
+            print(f"[PLUGIN UPDATE ERROR] Github API Call Failed, Update Aborted. {e}")
             return None, None
 
     def downloadFile(self, url, file_path):
@@ -64,12 +81,12 @@ class UpdatePlugins:
         }
         try:
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req) as response, open(file_path, 'wb') as out_file:
-                out_file.write(response.read())
-            print(f"[INFO] Updated Package {filename}.")
+            with urllib.request.urlopen(req) as resp, open(file_path, 'wb') as out_file:
+                out_file.write(resp.read())
+            print(f"[PLUGIN UPDATE INFO] Updated Package {filename}.")
             return True
         except Exception as e:
-            print(f"[ERROR] Download Failed, Updated of {filename} Aborted. {e}")
+            print(f"[PLUGIN UPDATE ERROR] Download Failed, Updated of {filename} Aborted. {e}")
             return False
 
 
